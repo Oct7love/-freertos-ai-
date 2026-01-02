@@ -1,0 +1,79 @@
+# ==================== STM32 + FreeRTOS 项目 .gitignore ====================
+# 作者：傲娇大小姐哈雷酱
+
+# ========== 编译输出 ==========
+build/
+Debug/
+Release/
+*.o
+*.elf
+*.bin
+*.hex
+*.map
+*.d
+*.su
+*.list
+
+# ========== IDE配置文件（Keil/STM32CubeIDE/IAR等）==========
+# STM32CubeIDE
+.settings/
+.cproject
+.project
+*.launch
+
+# Keil
+*.uvguix*
+*.uvopt
+*.bak
+*.dep
+*.plg
+*.tmp
+JLinkLog.txt
+JLinkSettings.ini
+RTE/
+DebugConfig/
+
+# IAR
+*.ewt
+*.dni
+*.wsdt
+settings/
+
+# VSCode
+.vscode/
+*.code-workspace
+
+# JetBrains IDEs
+.idea/
+
+# ========== 操作系统文件 ==========
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# ========== Git相关 ==========
+*.orig
+*.rej
+
+# ========== 日志和临时文件 ==========
+*.log
+*.tmp
+*.temp
+
+# ========== 其他 ==========
+# 如果你的Drivers文件夹是HAL库（很大），可以取消下面这行注释排除它
+# Drivers/
+
+# 如果有第三方库，可以选择性排除
+# Middlewares/Third_Party/
+
+# ==================== 保留的重要文件 ====================
+# 以下文件/文件夹会被保留：
+# ✅ Core/ - 源代码
+# ✅ Markdown/ - 文档
+# ✅ *.ioc - CubeMX配置文件
+# ✅ Makefile - 编译脚本
+# ✅ README.md - 项目说明
+# ✅ .gitignore - 本文件
