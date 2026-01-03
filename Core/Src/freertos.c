@@ -30,7 +30,6 @@
 
 /* Private typedef -----------------------------------------------------------*/
 /* USER CODE BEGIN PTD */
-#include "APP/bsp_system.h"
 /* USER CODE END PTD */
 
 /* Private define ------------------------------------------------------------*/
@@ -63,6 +62,22 @@ const osThreadAttr_t defaultTask_attributes = {
 void StartDefaultTask(void *argument);
 
 void MX_FREERTOS_Init(void); /* (MISRA C 2004 rule 8.1) */
+
+/* Hook prototypes */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName);
+
+/* USER CODE BEGIN 4 */
+void vApplicationStackOverflowHook(xTaskHandle xTask, signed char *pcTaskName)
+{
+    (void)xTask;
+    (void)pcTaskName;
+    taskDISABLE_INTERRUPTS();
+    for(;;) {
+        HAL_GPIO_TogglePin(LED2_GPIO_Port, LED2_Pin);
+        for(volatile uint32_t i = 0; i < 200000; i++) { }
+    }
+}
+/* USER CODE END 4 */
 
 /**
   * @brief  FreeRTOS initialization
@@ -117,19 +132,13 @@ void StartDefaultTask(void *argument)
   /* Infinite loop */
   for(;;)
   {
-    osDelay(1);
+    osDelay(portMAX_DELAY);
   }
   /* USER CODE END StartDefaultTask */
 }
 
 /* Private application code --------------------------------------------------*/
 /* USER CODE BEGIN Application */
-// 栈溢出钩子函数
-void vApplicationStackOverflowHook(TaskHandle_t xTask, char *pcTaskName) {
-  // 栈溢出时会调用这里
-  taskDISABLE_INTERRUPTS();
-  uart_printf_dma(&huart1,"[ERROR] 任务 %s 栈溢出！\r\n", pcTaskName);
-  for(;;);  // 死循环，方便调试
-}
+
 /* USER CODE END Application */
 

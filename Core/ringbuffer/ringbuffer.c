@@ -6,7 +6,6 @@ void ringbuffer_init(ringbuffer_t *rb)
     rb->r = 0;
     rb->w = 0;
     memset(rb->buffer, 0, sizeof(uint8_t) * RINGBUFFER_SIZE);
-    rb->itemCount = 0;  // 保留字段但不再使用
 }
 
 // 检查环形缓冲区是否已满（无锁算法：保留1个空位区分满/空）

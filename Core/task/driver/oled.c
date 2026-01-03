@@ -1,6 +1,10 @@
 #include "oled.h"
 #include "oledfont.h"
 #include <string.h>  // 用于 memset
+#include "tim.h"     // 用于性能测量
+
+/* ========== 性能测量 ========== */
+static uint32_t last_flush_time_us = 0;  // 上次刷新耗时(微秒)
 
 /* ========== 显示缓冲区 ========== */
 static uint8_t OLED_Buffer[128 * 8] = {0};  // 1024字节的显示缓冲区
@@ -15,12 +19,13 @@ static void OLED_WriteData(uint8_t Data);
 static void OLED_SetCursor(uint8_t Y, uint8_t X);
 static uint32_t OLED_Pow(uint32_t X, uint32_t Y);
 
-/* ========== I2C延时函数(调整延时可改变I2C速度) ========== */
+/* ========== I2C延时函数(优化版) ========== */
 static void OLED_I2C_Delay(void)
 {
     // 软件延时,使用volatile防止编译器优化
+    // 优化：从5减少到2，提升I2C速度约2.5倍
     volatile uint16_t i;
-    for(i = 0; i < 5; i++);  // 恢复到原始的稳定值
+    for(i = 0; i < 2; i++);  // 优化后：约100kHz I2C速度
 }
 
 /* ========== I2C引脚初始化 ========== */
@@ -344,17 +349,31 @@ void OLED_Init(void)
     // printf("[OLED]Initialization complete!\r\n");
 }
 
-/* ========== 将缓冲区内容一次性刷新到屏幕 ========== */
+/* ========== 将缓冲区内容一次性刷新到屏幕(优化版) ========== */
 void OLED_Flush(void)
 {
-    // 恢复到原始的逐字节发送方式（稳定版本）
-    // 虽然速度慢，但这是经过验证能正常工作的版本
+    // 开始计时
+    uint32_t start = __HAL_TIM_GET_COUNTER(&htim3);
+    
+    // 优化：使用批量写入，每页只需1次I2C事务（共8次）
+    // 原来：每字节1次事务，共1024次，开销巨大
     for(uint8_t j = 0; j < 8; j++)
     {
         OLED_SetCursor(j, 0);
-        for(uint8_t i = 0; i < 128; i++)
-        {
-            OLED_WriteData(OLED_Buffer[j * 128 + i]);
-        }
+        OLED_WriteDataBurst(&OLED_Buffer[j * 128], 128);  // 批量发送128字节
     }
+    
+    // 计算耗时
+    uint32_t end = __HAL_TIM_GET_COUNTER(&htim3);
+    if(end >= start) {
+        last_flush_time_us = end - start;
+    } else {
+        last_flush_time_us = (65535 - start) + end + 1;  // 处理计数器溢出
+    }
+}
+
+/* ========== 获取上次刷新耗时 ========== */
+uint32_t OLED_GetFlushTime(void)
+{
+    return last_flush_time_us;
 }

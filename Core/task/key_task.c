@@ -3,6 +3,10 @@
 //
 
 #include "key_task.h"
+#include "oled_task.h"
+#include "dht11_task.h"
+#include "mq2_task.h"
+
 // IPC对象
 static EventGroupHandle_t key_event_group = NULL;
 static TimerHandle_t key1_debounce_timer = NULL;
@@ -17,9 +21,7 @@ static void key1_debounce_callback(TimerHandle_t xTimer) {
     // 再次读取按键状态，确认是否仍然按下
     if (HAL_GPIO_ReadPin(KEY1_GPIO_Port, KEY1_Pin) == GPIO_PIN_RESET) {
         // 确认按下，设置事件位
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xEventGroupSetBitsFromISR(key_event_group, KEY_EVENT_KEY1_PRESS, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        xEventGroupSetBits(key_event_group, KEY_EVENT_KEY1_PRESS);
     }
 }
 
@@ -28,9 +30,7 @@ static void key2_debounce_callback(TimerHandle_t xTimer) {
     (void)xTimer;
 
     if (HAL_GPIO_ReadPin(KEY2_GPIO_Port, KEY2_Pin) == GPIO_PIN_RESET) {
-        BaseType_t xHigherPriorityTaskWoken = pdFALSE;
-        xEventGroupSetBitsFromISR(key_event_group, KEY_EVENT_KEY2_PRESS, &xHigherPriorityTaskWoken);
-        portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
+        xEventGroupSetBits(key_event_group, KEY_EVENT_KEY2_PRESS);
     }
 }
 // GPIO中断回调（需要在stm32f1xx_it.c中调用）
@@ -39,10 +39,14 @@ void key_exti_callback(uint16_t GPIO_Pin) {
 
     if (GPIO_Pin == KEY1_Pin) {
         // 启动KEY1去抖定时器（30ms单次）
-        xTimerStartFromISR(key1_debounce_timer, &xHigherPriorityTaskWoken);
+        if (key1_debounce_timer) {
+            xTimerStartFromISR(key1_debounce_timer, &xHigherPriorityTaskWoken);
+        }
     } else if (GPIO_Pin == KEY2_Pin) {
         // 启动KEY2去抖定时器（30ms单次）
-        xTimerStartFromISR(key2_debounce_timer, &xHigherPriorityTaskWoken);
+        if (key2_debounce_timer) {
+            xTimerStartFromISR(key2_debounce_timer, &xHigherPriorityTaskWoken);
+        }
     }
 
     portYIELD_FROM_ISR(xHigherPriorityTaskWoken);
@@ -65,24 +69,47 @@ static void key_task(void *arg) {
             portMAX_DELAY
         );
 
+        // KEY1：根据当前界面启停对应传感器
         if (events & KEY_EVENT_KEY1_PRESS) {
             uart_printf_dma(&huart1, "[KEY] KEY1 Pressed!\r\n");
 
-            // KEY1功能：触发LED错误模式
-            led_set_mode(LED_EVENT_ERROR);
+            // 获取当前界面（原子读取，线程安全）
+            ui_page_t page = oled_get_current_page();
 
-            // 在OLED第4行显示按键信息
-            oled_show_text(4, 1, "KEY1: Error  ");
+            if (page == UI_PAGE_DHT11) {
+                // DHT11 界面：只控制 DHT11
+                if (dht11_is_running()) {
+                    dht11_task_stop();
+                } else {
+                    dht11_task_start();
+                }
+                uart_printf_dma(&huart1, "[KEY] DHT11 %s\r\n",
+                               dht11_is_running() ? "started" : "stopped");
+            }
+            else if (page == UI_PAGE_MQ2) {
+                // MQ2 界面：只控制 MQ2
+                if (mq2_is_running()) {
+                    mq2_task_stop();
+                } else {
+                    mq2_task_start();
+                }
+                uart_printf_dma(&huart1, "[KEY] MQ2 %s\r\n",
+                               mq2_is_running() ? "started" : "stopped");
+            }
+            else {
+                // 欢迎界面：提示用户先切换界面
+                uart_printf_dma(&huart1, "[KEY] Switch to sensor page first!\r\n");
+            }
+
+            // 刷新当前界面（更新状态显示）
+            oled_switch_page(page);
         }
 
+        // KEY2：切换界面
         if (events & KEY_EVENT_KEY2_PRESS) {
             uart_printf_dma(&huart1, "[KEY] KEY2 Pressed!\r\n");
-
-            // KEY2功能：恢复LED心跳模式
-            led_set_mode(LED_EVENT_HEARTBEAT);
-
-            // 在OLED第4行显示按键信息
-            oled_show_text(4, 1, "KEY2: Normal ");
+            oled_next_page();
+            uart_printf_dma(&huart1, "[KEY] Page switched\r\n");
         }
     }
 }
@@ -126,6 +153,9 @@ void key_task_init(void) {
         uart_printf_dma(&huart1, "[ERROR] KEY task creation failed!\r\n");
         for(;;);
     }
+
+    HAL_NVIC_ClearPendingIRQ(EXTI9_5_IRQn);
+    HAL_NVIC_EnableIRQ(EXTI9_5_IRQn);
 
     uart_printf_dma(&huart1, "[KEY] Init OK!\r\n");
 }

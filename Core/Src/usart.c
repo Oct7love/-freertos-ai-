@@ -25,7 +25,6 @@
 #include "APP/bsp_system.h"
 // 外部声明
 extern uint8_t uart_rx_dma_buffer[128];
-extern ringbuffer_t uart_rx_rb;
 /* USER CODE END 0 */
 
 UART_HandleTypeDef huart1;

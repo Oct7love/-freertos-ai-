@@ -34,7 +34,6 @@
   static void led_control_task(void *arg) {
       EventBits_t events;
 
-      // 延迟50ms，避免启动时打印冲突
       vTaskDelay(pdMS_TO_TICKS(50));
       uart_printf_dma(&huart1, "[LED Task] Running!\r\n");
 

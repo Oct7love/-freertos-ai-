@@ -20,10 +20,22 @@
 #include "stdarg.h"
 #include "string.h"
 #include "stdint.h"
+#include "math.h"
 #include "gpio.h"
 #include "usart.h"
 #include "dma.h"
 #include "timers.h"
+#include "tim.h"
+#include "adc.h"
+
+
+
+//driver头文件
+#include "task/driver/oled.h"
+#include "task/driver/oledfont.h"
+#include "task/driver/delay.h"
+#include "task/driver/dht11.h"
+#include "task/driver/mq2.h"
 
 
 //任务函数
@@ -32,10 +44,7 @@
 #include "task/led_task.h"
 #include "task/oled_task.h"
 #include "task/key_task.h"
-
-//driver头文件
-#include "task/driver/oled.h"
-#include "task/driver/oledfont.h"
-
+#include "task/dht11_task.h"
+#include "task/mq2_task.h"
 #include "ringbuffer/ringbuffer.h"
 #endif //FREERTOS_TEST_BSP_SYSTEM_H

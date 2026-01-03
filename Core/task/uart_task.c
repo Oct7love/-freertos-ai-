@@ -111,28 +111,25 @@ static void uart_rx_task(void *arg)
                     uint8_t byte = data_buffer[i];
 
                     if (byte == '\r' || byte == '\n') {
-                        // 遇到换行符，打印当前行
                         if (line_len > 0) {
                             line_buffer[line_len] = '\0';
                             uart_printf_dma(&huart1, "[RX] %s\r\n", (char*)line_buffer);
+
+                            // if (strstr((char*)line_buffer, "error")) {
+                            //     led_set_mode(LED_EVENT_ERROR);
+                            // } else if (strstr((char*)line_buffer, "normal")) {
+                            //     led_set_mode(LED_EVENT_HEARTBEAT);
+                            // }
+
                             line_len = 0;
                         }
                     } else {
-                        // 累积到行缓冲区
                         if (line_len < sizeof(line_buffer) - 1) {
                             line_buffer[line_len++] = byte;
                         }
                     }
                 }
             }
-        } // 示例：串口收到"error"时触发错误指示
-        if (strstr((char*)line_buffer, "error")) {
-            led_set_mode(LED_EVENT_ERROR);
-        }
-
-        // 示例：串口收到"normal"时恢复心跳
-        if (strstr((char*)line_buffer, "normal")) {
-            led_set_mode(LED_EVENT_HEARTBEAT);
         }
     }
 }

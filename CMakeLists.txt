@@ -50,6 +50,16 @@ add_executable(${CMAKE_PROJECT_NAME}
         Core/task/oled_task.h
         Core/task/key_task.c
         Core/task/key_task.h
+        Core/task/driver/delay.c
+        Core/task/driver/delay.h
+        Core/task/driver/dht11.c
+        Core/task/driver/dht11.h
+        Core/task/dht11_task.c
+        Core/task/dht11_task.h
+        Core/task/driver/mq2.c
+        Core/task/driver/mq2.h
+        Core/task/mq2_task.c
+        Core/task/mq2_task.h
 
 )
 
