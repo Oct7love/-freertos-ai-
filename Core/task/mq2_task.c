@@ -49,9 +49,9 @@ static void mq2_task(void *arg) {
         mq2_shared_data.is_valid = 1;
         xSemaphoreGive(mq2_mutex);
 
-        // 串口打印
-        uart_printf_dma(&huart1, "[MQ2] PPM=%.1f Alarm=%d [OK:%lu]\r\n",
-                       data.ppm, data.alarm, read_count);
+        // 串口打印（详细信息）
+        uart_printf_dma(&huart1, "[MQ2] ADC=%lu V=%.2f PPM=%.1f Alarm=%d [OK:%lu]\r\n",
+                       data.adc_raw, data.voltage, data.ppm, data.alarm, read_count);
 
         // 通知OLED更新MQ2显示
         oled_update_mq2(data.ppm, data.alarm, 1);

@@ -60,6 +60,16 @@ add_executable(${CMAKE_PROJECT_NAME}
         Core/task/driver/mq2.h
         Core/task/mq2_task.c
         Core/task/mq2_task.h
+        Core/task/driver/eMPL_MPU/dmpKey.h
+        Core/task/driver/eMPL_MPU/dmpmap.h
+        Core/task/driver/eMPL_MPU/inv_mpu.c
+        Core/task/driver/eMPL_MPU/inv_mpu.h
+        Core/task/driver/eMPL_MPU/inv_mpu_dmp_motion_driver.c
+        Core/task/driver/eMPL_MPU/inv_mpu_dmp_motion_driver.h
+        Core/task/mpu6050_task.h
+        Core/task/mpu6050_task.c
+        Core/task/max30102_task.c
+        Core/task/max30102_task.h
 
 )
 
@@ -84,6 +94,7 @@ target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
 # Add project symbols (macros)
 target_compile_definitions(${CMAKE_PROJECT_NAME} PRIVATE
     # Add user defined symbols
+    MPU6050  # DMP 库需要此定义
 )
 target_include_directories(${CMAKE_PROJECT_NAME} PRIVATE
         ${CMAKE_SOURCE_DIR}/Core
@@ -99,4 +110,9 @@ target_link_libraries(${CMAKE_PROJECT_NAME}
 
     # Add user defined libraries
 
+)
+
+# 启用浮点数 printf 支持
+target_link_options(${CMAKE_PROJECT_NAME} PRIVATE
+    -u _printf_float
 )

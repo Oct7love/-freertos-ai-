@@ -11,6 +11,8 @@ typedef enum {
     UI_PAGE_WELCOME = 0,   // 欢迎界面：Smart Hat
     UI_PAGE_DHT11,         // 温湿度界面
     UI_PAGE_MQ2,           // 气体浓度界面
+    UI_PAGE_MPU6050,       // 姿态传感器界面
+    UI_PAGE_MAX30102,      // 心率血氧界面
     UI_PAGE_MAX
 } ui_page_t;
 
@@ -26,6 +28,8 @@ typedef enum {
     OLED_CMD_SWITCH_PAGE,     // 切换界面
     OLED_CMD_UPDATE_DHT11,    // 更新温湿度显示
     OLED_CMD_UPDATE_MQ2,      // 更新气体浓度显示
+    OLED_CMD_UPDATE_MPU6050,  // 更新姿态显示
+    OLED_CMD_UPDATE_MAX30102, // 更新心率血氧显示
 } oled_cmd_type_t;
 
 // OLED显示消息结构体
@@ -63,6 +67,19 @@ typedef struct {
             uint8_t alarm;
             uint8_t valid;
         } mq2;                // 气体浓度数据
+        struct {
+            float pitch;
+            float roll;
+            float yaw;
+            uint32_t steps;
+            uint8_t valid;
+        } mpu6050;            // 姿态数据
+        struct {
+            uint16_t heart_rate;
+            uint8_t spo2;
+            uint8_t finger;
+            uint8_t valid;
+        } max30102;           // 心率血氧数据
     } data;
 } oled_msg_t;
 
@@ -96,5 +113,7 @@ void oled_next_page(void);                 // 切换到下一个界面
 ui_page_t oled_get_current_page(void);     // 获取当前界面
 void oled_update_dht11(uint8_t temp, uint8_t humi, uint8_t valid);  // 更新温湿度显示
 void oled_update_mq2(float ppm, uint8_t alarm, uint8_t valid);      // 更新气体浓度显示
+void oled_update_mpu6050(float pitch, float roll, float yaw, uint32_t steps, uint8_t valid);  // 更新姿态显示
+void oled_update_max30102(uint16_t heart_rate, uint8_t spo2, uint8_t finger, uint8_t valid);  // 更新心率血氧显示
 
 #endif //FREERTOS_TEST_OLED_TASK_H

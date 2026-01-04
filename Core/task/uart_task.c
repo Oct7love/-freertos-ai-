@@ -179,18 +179,23 @@ int uart_printf_dma(UART_HandleTypeDef *huart, const char *format, ...) {
     int len;
     uint32_t timeout;
 
-    // 格式化字符串
-    va_start(arg, format);
-    len = vsnprintf((char *)uart_tx_dma_buffer, sizeof(uart_tx_dma_buffer), format, arg);
-    va_end(arg);
-    if (len <= 0) return 0;
-
     // 检查调度器状态
     BaseType_t os_running = (xTaskGetSchedulerState() == taskSCHEDULER_RUNNING);
 
-    // 多任务保护：获取互斥锁
+    // 多任务保护：获取互斥锁（必须在格式化之前！）
     if (os_running && uart_tx_mutex) {
         xSemaphoreTake(uart_tx_mutex, portMAX_DELAY);
+    }
+
+    // 格式化字符串（在 mutex 保护内）
+    va_start(arg, format);
+    len = vsnprintf((char *)uart_tx_dma_buffer, sizeof(uart_tx_dma_buffer), format, arg);
+    va_end(arg);
+    if (len <= 0) {
+        if (os_running && uart_tx_mutex) {
+            xSemaphoreGive(uart_tx_mutex);
+        }
+        return 0;
     }
 
     // 等待上次DMA完成（带超时保护）

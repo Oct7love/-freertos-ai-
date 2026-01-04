@@ -5,6 +5,8 @@
 #include "oled_task.h"
 #include "dht11_task.h"
 #include "mq2_task.h"
+#include "mpu6050_task.h"
+#include "max30102_task.h"
 
 // IPC对象
 static QueueHandle_t oled_queue = NULL;      // 显示命令队列
@@ -22,6 +24,19 @@ static uint8_t cached_valid = 0;
 static float cached_ppm = 0.0f;
 static uint8_t cached_alarm = 0;
 static uint8_t cached_mq2_valid = 0;
+
+// MPU6050缓存（用于界面刷新）
+static float cached_pitch = 0.0f;
+static float cached_roll = 0.0f;
+static float cached_yaw = 0.0f;
+static uint32_t cached_steps = 0;
+static uint8_t cached_mpu_valid = 0;
+
+// MAX30102缓存（用于界面刷新）
+static uint16_t cached_heart_rate = 0;
+static uint8_t cached_spo2 = 0;
+static uint8_t cached_finger = 0;
+static uint8_t cached_max30102_valid = 0;
 
 // ==================== 界面绘制函数 ====================
 
@@ -82,6 +97,67 @@ static void draw_mq2_page(void) {
     } else {
         OLED_ShowString(3, 1, "PPM: ----.-");
         OLED_ShowString(4, 1, "Alarm: --");
+    }
+}
+
+// 绘制MPU6050姿态界面
+static void draw_mpu6050_page(void) {
+    OLED_Clear();
+    OLED_ShowString(1, 1, "=MPU6050 Sensor=");
+
+    // 状态行
+    if (mpu6050_is_running()) {
+        OLED_ShowString(2, 1, "Status: RUN ");
+    } else {
+        OLED_ShowString(2, 1, "Status: STOP");
+    }
+
+    // 姿态数据
+    if (cached_mpu_valid) {
+        // 第3行：Pitch和Roll
+        OLED_ShowString(3, 1, "P:");
+        OLED_ShowSignedNum(3, 3, (int32_t)cached_pitch, 3);
+        OLED_ShowString(3, 8, "R:");
+        OLED_ShowSignedNum(3, 10, (int32_t)cached_roll, 3);
+
+        // 第4行：步数
+        OLED_ShowString(4, 1, "Steps:");
+        OLED_ShowNum(4, 7, cached_steps, 5);
+    } else {
+        OLED_ShowString(3, 1, "P:--- R:---");
+        OLED_ShowString(4, 1, "Steps:-----");
+    }
+}
+
+// 绘制MAX30102心率血氧界面
+static void draw_max30102_page(void) {
+    OLED_Clear();
+    OLED_ShowString(1, 1, "=MAX30102 Sensor=");
+
+    // 状态行
+    if (max30102_is_running()) {
+        OLED_ShowString(2, 1, "Status: RUN ");
+    } else {
+        OLED_ShowString(2, 1, "Status: STOP");
+    }
+
+    // 心率血氧数据
+    if (cached_max30102_valid && cached_finger) {
+        // 第3行：心率
+        OLED_ShowString(3, 1, "HR:");
+        OLED_ShowNum(3, 4, cached_heart_rate, 3);
+        OLED_ShowString(3, 8, "BPM");
+
+        // 第4行：血氧
+        OLED_ShowString(4, 1, "SpO2:");
+        OLED_ShowNum(4, 6, cached_spo2, 3);
+        OLED_ShowString(4, 10, "%");
+    } else if (!cached_finger) {
+        OLED_ShowString(3, 1, "No Finger!");
+        OLED_ShowString(4, 1, "HR:--- SpO2:---%");
+    } else {
+        OLED_ShowString(3, 1, "HR:--- BPM");
+        OLED_ShowString(4, 1, "SpO2:--- %");
     }
 }
 
@@ -157,6 +233,10 @@ static void oled_task(void *arg) {
                             draw_dht11_page();
                         } else if (current_page == UI_PAGE_MQ2) {
                             draw_mq2_page();
+                        } else if (current_page == UI_PAGE_MPU6050) {
+                            draw_mpu6050_page();
+                        } else if (current_page == UI_PAGE_MAX30102) {
+                            draw_max30102_page();
                         }
                         OLED_Flush();
                         last_flush = xTaskGetTickCount();
@@ -184,6 +264,33 @@ static void oled_task(void *arg) {
                         // 如果当前在MQ2界面，刷新显示
                         if (current_page == UI_PAGE_MQ2) {
                             draw_mq2_page();
+                        }
+                        break;
+
+                    case OLED_CMD_UPDATE_MPU6050:
+                        // 更新MPU6050缓存
+                        cached_pitch = msg.data.mpu6050.pitch;
+                        cached_roll = msg.data.mpu6050.roll;
+                        cached_yaw = msg.data.mpu6050.yaw;
+                        cached_steps = msg.data.mpu6050.steps;
+                        cached_mpu_valid = msg.data.mpu6050.valid;
+
+                        // 如果当前在MPU6050界面，刷新显示
+                        if (current_page == UI_PAGE_MPU6050) {
+                            draw_mpu6050_page();
+                        }
+                        break;
+
+                    case OLED_CMD_UPDATE_MAX30102:
+                        // 更新MAX30102缓存
+                        cached_heart_rate = msg.data.max30102.heart_rate;
+                        cached_spo2 = msg.data.max30102.spo2;
+                        cached_finger = msg.data.max30102.finger;
+                        cached_max30102_valid = msg.data.max30102.valid;
+
+                        // 如果当前在MAX30102界面，刷新显示
+                        if (current_page == UI_PAGE_MAX30102) {
+                            draw_max30102_page();
                         }
                         break;
 
@@ -365,6 +472,35 @@ void oled_update_mq2(float ppm, uint8_t alarm, uint8_t valid) {
     msg.data.mq2.ppm = ppm;
     msg.data.mq2.alarm = alarm;
     msg.data.mq2.valid = valid;
+
+    xQueueSend(oled_queue, &msg, 0);
+}
+
+// 更新MPU6050姿态显示
+void oled_update_mpu6050(float pitch, float roll, float yaw, uint32_t steps, uint8_t valid) {
+    if (!oled_queue) return;
+
+    oled_msg_t msg;
+    msg.cmd = OLED_CMD_UPDATE_MPU6050;
+    msg.data.mpu6050.pitch = pitch;
+    msg.data.mpu6050.roll = roll;
+    msg.data.mpu6050.yaw = yaw;
+    msg.data.mpu6050.steps = steps;
+    msg.data.mpu6050.valid = valid;
+
+    xQueueSend(oled_queue, &msg, 0);
+}
+
+// 更新MAX30102心率血氧显示
+void oled_update_max30102(uint16_t heart_rate, uint8_t spo2, uint8_t finger, uint8_t valid) {
+    if (!oled_queue) return;
+
+    oled_msg_t msg;
+    msg.cmd = OLED_CMD_UPDATE_MAX30102;
+    msg.data.max30102.heart_rate = heart_rate;
+    msg.data.max30102.spo2 = spo2;
+    msg.data.max30102.finger = finger;
+    msg.data.max30102.valid = valid;
 
     xQueueSend(oled_queue, &msg, 0);
 }

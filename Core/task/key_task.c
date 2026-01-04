@@ -6,6 +6,8 @@
 #include "oled_task.h"
 #include "dht11_task.h"
 #include "mq2_task.h"
+#include "mpu6050_task.h"
+#include "max30102_task.h"
 
 // IPC对象
 static EventGroupHandle_t key_event_group = NULL;
@@ -95,6 +97,26 @@ static void key_task(void *arg) {
                 }
                 uart_printf_dma(&huart1, "[KEY] MQ2 %s\r\n",
                                mq2_is_running() ? "started" : "stopped");
+            }
+            else if (page == UI_PAGE_MPU6050) {
+                // MPU6050 界面：只控制 MPU6050
+                if (mpu6050_is_running()) {
+                    mpu6050_task_stop();
+                } else {
+                    mpu6050_task_start();
+                }
+                uart_printf_dma(&huart1, "[KEY] MPU6050 %s\r\n",
+                               mpu6050_is_running() ? "started" : "stopped");
+            }
+            else if (page == UI_PAGE_MAX30102) {
+                // MAX30102 界面：只控制 MAX30102
+                if (max30102_is_running()) {
+                    max30102_task_stop();
+                } else {
+                    max30102_task_start();
+                }
+                uart_printf_dma(&huart1, "[KEY] MAX30102 %s\r\n",
+                               max30102_is_running() ? "started" : "stopped");
             }
             else {
                 // 欢迎界面：提示用户先切换界面

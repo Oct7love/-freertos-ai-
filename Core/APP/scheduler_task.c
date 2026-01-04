@@ -72,4 +72,6 @@ void scheduler_init(void) {
     key_task_init();
     dht11_task_init();   // 温湿度传感器任务
     mq2_task_init();     // MQ2气体传感器任务
+    mpu6050_task_init(); // MPU6050姿态传感器任务
+    max30102_task_init(); // MAX30102心率血氧任务
 }
