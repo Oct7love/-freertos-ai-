@@ -5,6 +5,7 @@
 #include "display.h"
 #include "board.h"
 #include "application.h"
+#include "huaweicloud_iot.h"
 #include <esp_log.h>
 #include <driver/uart.h>
 #include <driver/gpio.h>
@@ -30,22 +31,24 @@ private:
     int latest_heart_rate_ = 0;
     int latest_spo2_ = 0;
     float latest_temperature_ = 0.0f;
-    int latest_humidity_ = 0;           // ← 新添加
+    int latest_humidity_ = 0;
     float latest_pitch_ = 0.0f;
     float latest_roll_ = 0.0f;
     float latest_yaw_ = 0.0f;
-    float latest_mq2_ppm_ = 0.0f;      // ← 新添加的第35行
-    int latest_mq2_alarm_ = 0;          // ← 新添加的第36行
+    float latest_mq2_ppm_ = 0.0f;
+    int latest_mq2_alarm_ = 0;
 
-        // GPS数据
-      float latest_latitude_ = 0.0f;
-      float latest_longitude_ = 0.0f;
-      int latest_satellites_ = 0;
+    // GPS数据
+    float latest_latitude_ = 0.0f;
+    float latest_longitude_ = 0.0f;
+    int latest_satellites_ = 0;
 
     // 行缓冲区（处理分片接收）
     char line_buffer_[LINE_BUF_SIZE];
     int line_pos_ = 0;
 
+    // 华为云IoT模块
+    std::unique_ptr<HuaweiCloudIoT> huawei_iot_;
 
     static constexpr const char* TAG = "STM32Controller";
 
@@ -135,6 +138,8 @@ private:
                 ESP_LOGI(TAG, "心率: %d bpm, 血氧: %d%%", hr, spo2);
                 snprintf(notify_msg, sizeof(notify_msg), "心率:%d 血氧:%d%%", hr, spo2);
                 if (display) display->ShowNotification(notify_msg);
+                // 同步到华为云
+                if (huawei_iot_) huawei_iot_->UpdateHeartRate(hr, spo2);
             }
         }
         else if ((pos = strstr(response, "{DATA:TEMP:")) != NULL) {
@@ -145,6 +150,8 @@ private:
                   ESP_LOGI(TAG, "温度: %d°C, 湿度: %d%%", temp, humi);
                   snprintf(notify_msg, sizeof(notify_msg), "温度:%d°C 湿度:%d%%", temp, humi);
                   if (display) display->ShowNotification(notify_msg);
+                  // 同步到华为云
+                  if (huawei_iot_) huawei_iot_->UpdateTemperature((float)temp, humi);
               }
           }
         else if ((pos = strstr(response, "{DATA:MPU:")) != NULL) {
@@ -183,6 +190,8 @@ private:
                   ESP_LOGI(TAG, "GPS: 纬度=%.6f, 经度=%.6f, 卫星=%d", lat, lon, satellites);
                   snprintf(notify_msg, sizeof(notify_msg), "GPS:%.5f,%.5f", lat, lon);
                   if (display) display->ShowNotification(notify_msg);
+                  // 同步到华为云
+                  if (huawei_iot_) huawei_iot_->UpdateGPS(lat, lon);
               }
           }                                
         else if (strstr(response, "{STATUS:")) {
@@ -247,6 +256,12 @@ private:
             auto& app = Application::GetInstance();
             app.PlaySound("alert");
 
+            // 上报华为云
+            if (huawei_iot_) {
+                huawei_iot_->SetFallFlag(1);
+                huawei_iot_->ReportNow();
+            }
+
             ESP_LOGW(TAG, "警告：检测到摔倒，请注意安全！");
         }
         else if (strstr(response, "{EVENT:COLLISION}")) {
@@ -262,8 +277,14 @@ private:
             auto& app = Application::GetInstance();
             app.PlaySound("alert");
 
+            // 上报华为云
+            if (huawei_iot_) {
+                huawei_iot_->SetCollisionFlag(1);
+                huawei_iot_->ReportNow();
+            }
+
             ESP_LOGW(TAG, "警告：检测到碰撞，请小心！");
-        }else if (strstr(response, "{EVENT:SMOKE}")) {    // ← 从这里开始添加
+        }else if (strstr(response, "{EVENT:SMOKE}")) {
               ESP_LOGW(TAG, "⚠️ 检测到烟雾事件！");
 
               auto& board = Board::GetInstance();
@@ -295,6 +316,10 @@ public:
     STM32Controller() {
         ESP_LOGI(TAG, "Initializing STM32Controller");
         InitializeUART();
+
+        // 初始化华为云IoT
+        huawei_iot_ = std::make_unique<HuaweiCloudIoT>();
+        huawei_iot_->Start();
 
         auto& mcp_server = McpServer::GetInstance();
 
