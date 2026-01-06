@@ -4,6 +4,7 @@
 //
 
 #include "mq2_task.h"
+#include "esp32_task.h"
 
 // ==================== 共享数据（Mutex保护） ====================
 static struct {
@@ -55,6 +56,9 @@ static void mq2_task(void *arg) {
 
         // 通知OLED更新MQ2显示
         oled_update_mq2(data.ppm, data.alarm, 1);
+
+        // 发送数据给ESP32
+        esp32_send_mq2((uint16_t)data.ppm, data.alarm);
 
         // 报警处理：危险时LED快闪
         if (data.alarm >= MQ2_ALARM_HIGH) {

@@ -74,4 +74,6 @@ void scheduler_init(void) {
     mq2_task_init();     // MQ2气体传感器任务
     mpu6050_task_init(); // MPU6050姿态传感器任务
     max30102_task_init(); // MAX30102心率血氧任务
+    gps_task_init();     // GPS定位任务
+    esp32_task_init();   // ESP32通信任务
 }

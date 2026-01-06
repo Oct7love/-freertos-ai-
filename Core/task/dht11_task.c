@@ -4,6 +4,7 @@
 
 #include "dht11_task.h"
 #include "oled_task.h"
+#include "esp32_task.h"
 
 // 共享数据（互斥锁保护）
 static struct {
@@ -58,6 +59,9 @@ static void dht11_task(void *arg) {
 
             // 通知OLED更新温湿度显示
             oled_update_dht11(temp, humi, 1);
+
+            // 发送数据给ESP32
+            esp32_send_temperature((float)temp, (float)humi);
 
         } else {
             error_count++;

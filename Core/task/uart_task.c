@@ -62,11 +62,11 @@ static uint32_t find_utf8_boundary(uint8_t *data, uint32_t len) {
  */
 static void uart_rx_task(void *arg)
 {
-    static uint8_t line_buffer[512];      // 行缓冲区
+    static uint8_t line_buffer[256];      // 行缓冲区（减小）
     static uint32_t line_len = 0;         // 当前行长度
     static uint8_t incomplete_buffer[4];  // 保存不完整的 UTF-8 字节
     static uint32_t incomplete_len = 0;
-    uint8_t data_buffer[256];
+    uint8_t data_buffer[128];
 
     uart_printf_dma(&huart1, "[RX Task] Running!\r\n");
 

@@ -7,6 +7,7 @@
 #include "mq2_task.h"
 #include "mpu6050_task.h"
 #include "max30102_task.h"
+#include "gps_task.h"
 
 // IPC对象
 static QueueHandle_t oled_queue = NULL;      // 显示命令队列
@@ -37,6 +38,12 @@ static uint16_t cached_heart_rate = 0;
 static uint8_t cached_spo2 = 0;
 static uint8_t cached_finger = 0;
 static uint8_t cached_max30102_valid = 0;
+
+// GPS缓存（用于界面刷新）
+static float cached_lat = 0.0f;
+static float cached_lon = 0.0f;
+static uint8_t cached_satellites = 0;
+static uint8_t cached_gps_fixed = 0;
 
 // ==================== 界面绘制函数 ====================
 
@@ -161,6 +168,31 @@ static void draw_max30102_page(void) {
     }
 }
 
+// 绘制GPS定位界面
+static void draw_gps_page(void) {
+    OLED_Clear();
+    OLED_ShowString(1, 1, "===GPS Module===");
+
+    // 状态行
+    if (gps_is_running()) {
+        OLED_ShowString(2, 1, "Status: RUN ");
+    } else {
+        OLED_ShowString(2, 1, "Status: STOP");
+    }
+
+    // GPS数据
+    if (cached_gps_fixed) {
+        OLED_ShowString(3, 1, "Lat:");
+        OLED_ShowFloat(3, 5, cached_lat, 3, 4);
+        OLED_ShowString(4, 1, "Lon:");
+        OLED_ShowFloat(4, 5, cached_lon, 3, 4);
+    } else {
+        OLED_ShowString(3, 1, "Searching...");
+        OLED_ShowString(4, 1, "Sat:");
+        OLED_ShowNum(4, 5, cached_satellites, 2);
+    }
+}
+
 // OLED任务主函数
 static void oled_task(void *arg) {
     oled_msg_t msg;
@@ -237,6 +269,8 @@ static void oled_task(void *arg) {
                             draw_mpu6050_page();
                         } else if (current_page == UI_PAGE_MAX30102) {
                             draw_max30102_page();
+                        } else if (current_page == UI_PAGE_GPS) {
+                            draw_gps_page();
                         }
                         OLED_Flush();
                         last_flush = xTaskGetTickCount();
@@ -291,6 +325,19 @@ static void oled_task(void *arg) {
                         // 如果当前在MAX30102界面，刷新显示
                         if (current_page == UI_PAGE_MAX30102) {
                             draw_max30102_page();
+                        }
+                        break;
+
+                    case OLED_CMD_UPDATE_GPS:
+                        // 更新GPS缓存
+                        cached_lat = msg.data.gps.latitude;
+                        cached_lon = msg.data.gps.longitude;
+                        cached_satellites = msg.data.gps.satellites;
+                        cached_gps_fixed = msg.data.gps.is_fixed;
+
+                        // 如果当前在GPS界面，刷新显示
+                        if (current_page == UI_PAGE_GPS) {
+                            draw_gps_page();
                         }
                         break;
 
@@ -501,6 +548,20 @@ void oled_update_max30102(uint16_t heart_rate, uint8_t spo2, uint8_t finger, uin
     msg.data.max30102.spo2 = spo2;
     msg.data.max30102.finger = finger;
     msg.data.max30102.valid = valid;
+
+    xQueueSend(oled_queue, &msg, 0);
+}
+
+// 更新GPS显示
+void oled_update_gps(float lat, float lon, uint8_t satellites, uint8_t is_fixed) {
+    if (!oled_queue) return;
+
+    oled_msg_t msg;
+    msg.cmd = OLED_CMD_UPDATE_GPS;
+    msg.data.gps.latitude = lat;
+    msg.data.gps.longitude = lon;
+    msg.data.gps.satellites = satellites;
+    msg.data.gps.is_fixed = is_fixed;
 
     xQueueSend(oled_queue, &msg, 0);
 }

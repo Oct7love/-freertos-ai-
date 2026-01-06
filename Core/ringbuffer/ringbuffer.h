@@ -3,7 +3,7 @@
 
 #include "APP/bsp_system.h"
 #include "stm32f1xx_hal.h"
-#define RINGBUFFER_SIZE (2048)
+#define RINGBUFFER_SIZE (1024)
 
 typedef struct {
     volatile uint32_t w;

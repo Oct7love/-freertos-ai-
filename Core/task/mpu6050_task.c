@@ -4,6 +4,7 @@
 //
 
 #include "mpu6050_task.h"
+#include "esp32_task.h"
 
 
 // ==================== MPU6050 寄存器 ====================
@@ -223,6 +224,11 @@ static void mpu6050_task(void *arg) {
                                mpu6050_shared_data.yaw,
                                mpu6050_shared_data.step_count,
                                1);
+
+            // 发送数据给ESP32
+            esp32_send_mpu6050(mpu6050_shared_data.pitch,
+                              mpu6050_shared_data.roll,
+                              mpu6050_shared_data.yaw);
 
             // 摔倒/碰撞报警
             if (mpu6050_shared_data.fall_flag || mpu6050_shared_data.collision_flag) {

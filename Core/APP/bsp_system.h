@@ -53,5 +53,8 @@
 #include "task/mq2_task.h"
 #include "task/mpu6050_task.h"
 #include "task/max30102_task.h"
+#include "task/gps_task.h"
+#include "task/esp32_task.h"
+
 #include "ringbuffer/ringbuffer.h"
 #endif //FREERTOS_TEST_BSP_SYSTEM_H

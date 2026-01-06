@@ -104,7 +104,7 @@
       }
 
       // 创建LED控制任务
-      if (xTaskCreate(led_control_task, "led_ctrl", 128, NULL, 2, NULL) != pdPASS) {
+      if (xTaskCreate(led_control_task, "led_ctrl", 192, NULL, 2, NULL) != pdPASS) {
           uart_printf_dma(&huart1, "[ERROR] LED task failed!\r\n");
           for(;;);
       }

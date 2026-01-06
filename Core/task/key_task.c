@@ -8,6 +8,8 @@
 #include "mq2_task.h"
 #include "mpu6050_task.h"
 #include "max30102_task.h"
+#include "gps_task.h"
+#include "esp32_task.h"
 
 // IPC对象
 static EventGroupHandle_t key_event_group = NULL;
@@ -82,8 +84,10 @@ static void key_task(void *arg) {
                 // DHT11 界面：只控制 DHT11
                 if (dht11_is_running()) {
                     dht11_task_stop();
+                    esp32_send_sensor_state("TEMP", 0);
                 } else {
                     dht11_task_start();
+                    esp32_send_sensor_state("TEMP", 1);
                 }
                 uart_printf_dma(&huart1, "[KEY] DHT11 %s\r\n",
                                dht11_is_running() ? "started" : "stopped");
@@ -92,8 +96,10 @@ static void key_task(void *arg) {
                 // MQ2 界面：只控制 MQ2
                 if (mq2_is_running()) {
                     mq2_task_stop();
+                    esp32_send_sensor_state("MQ2", 0);
                 } else {
                     mq2_task_start();
+                    esp32_send_sensor_state("MQ2", 1);
                 }
                 uart_printf_dma(&huart1, "[KEY] MQ2 %s\r\n",
                                mq2_is_running() ? "started" : "stopped");
@@ -102,8 +108,10 @@ static void key_task(void *arg) {
                 // MPU6050 界面：只控制 MPU6050
                 if (mpu6050_is_running()) {
                     mpu6050_task_stop();
+                    esp32_send_sensor_state("MPU", 0);
                 } else {
                     mpu6050_task_start();
+                    esp32_send_sensor_state("MPU", 1);
                 }
                 uart_printf_dma(&huart1, "[KEY] MPU6050 %s\r\n",
                                mpu6050_is_running() ? "started" : "stopped");
@@ -112,11 +120,25 @@ static void key_task(void *arg) {
                 // MAX30102 界面：只控制 MAX30102
                 if (max30102_is_running()) {
                     max30102_task_stop();
+                    esp32_send_sensor_state("HR", 0);
                 } else {
                     max30102_task_start();
+                    esp32_send_sensor_state("HR", 1);
                 }
                 uart_printf_dma(&huart1, "[KEY] MAX30102 %s\r\n",
                                max30102_is_running() ? "started" : "stopped");
+            }
+            else if (page == UI_PAGE_GPS) {
+                // GPS 界面：只控制 GPS
+                if (gps_is_running()) {
+                    gps_task_stop();
+                    esp32_send_sensor_state("GPS", 0);
+                } else {
+                    gps_task_start();
+                    esp32_send_sensor_state("GPS", 1);
+                }
+                uart_printf_dma(&huart1, "[KEY] GPS %s\r\n",
+                               gps_is_running() ? "started" : "stopped");
             }
             else {
                 // 欢迎界面：提示用户先切换界面
@@ -170,8 +192,8 @@ void key_task_init(void) {
         for(;;);
     }
 
-    // 创建按键任务（优先级3，栈128字节）
-    if (xTaskCreate(key_task, "key", 128, NULL, 3, NULL) != pdPASS) {
+    // 创建按键任务（优先级3，栈256字节）
+    if (xTaskCreate(key_task, "key", 256, NULL, 3, NULL) != pdPASS) {
         uart_printf_dma(&huart1, "[ERROR] KEY task creation failed!\r\n");
         for(;;);
     }

@@ -13,6 +13,7 @@ typedef enum {
     UI_PAGE_MQ2,           // 气体浓度界面
     UI_PAGE_MPU6050,       // 姿态传感器界面
     UI_PAGE_MAX30102,      // 心率血氧界面
+    UI_PAGE_GPS,           // GPS 定位界面
     UI_PAGE_MAX
 } ui_page_t;
 
@@ -30,6 +31,7 @@ typedef enum {
     OLED_CMD_UPDATE_MQ2,      // 更新气体浓度显示
     OLED_CMD_UPDATE_MPU6050,  // 更新姿态显示
     OLED_CMD_UPDATE_MAX30102, // 更新心率血氧显示
+    OLED_CMD_UPDATE_GPS,      // 更新GPS显示
 } oled_cmd_type_t;
 
 // OLED显示消息结构体
@@ -80,6 +82,12 @@ typedef struct {
             uint8_t finger;
             uint8_t valid;
         } max30102;           // 心率血氧数据
+        struct {
+            float latitude;
+            float longitude;
+            uint8_t satellites;
+            uint8_t is_fixed;
+        } gps;                // GPS数据
     } data;
 } oled_msg_t;
 
@@ -115,5 +123,6 @@ void oled_update_dht11(uint8_t temp, uint8_t humi, uint8_t valid);  // 更新温
 void oled_update_mq2(float ppm, uint8_t alarm, uint8_t valid);      // 更新气体浓度显示
 void oled_update_mpu6050(float pitch, float roll, float yaw, uint32_t steps, uint8_t valid);  // 更新姿态显示
 void oled_update_max30102(uint16_t heart_rate, uint8_t spo2, uint8_t finger, uint8_t valid);  // 更新心率血氧显示
+void oled_update_gps(float lat, float lon, uint8_t satellites, uint8_t is_fixed);  // 更新GPS显示
 
 #endif //FREERTOS_TEST_OLED_TASK_H

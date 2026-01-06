@@ -5,6 +5,7 @@
 
 #include "max30102_task.h"
 #include "oled_task.h"
+#include "esp32_task.h"
 #include "i2c.h"
 #include <math.h>
 #include <string.h>
@@ -496,6 +497,11 @@ static void max30102_task(void *arg) {
             xSemaphoreGive(max30102_mutex);
 
             oled_update_max30102(hr_copy, spo2_copy, finger_copy, valid_copy);
+
+            // 发送数据给ESP32（只在有效时发送）
+            if (valid_copy && finger_copy) {
+                esp32_send_heartrate((uint8_t)hr_copy, spo2_copy);
+            }
         }
 
         // 使用vTaskDelayUntil保证稳定10ms周期

@@ -70,6 +70,10 @@ add_executable(${CMAKE_PROJECT_NAME}
         Core/task/mpu6050_task.c
         Core/task/max30102_task.c
         Core/task/max30102_task.h
+        Core/task/gps_task.c
+        Core/task/gps_task.h
+        Core/task/esp32_task.c
+        Core/task/esp32_task.h
 
 )
 
