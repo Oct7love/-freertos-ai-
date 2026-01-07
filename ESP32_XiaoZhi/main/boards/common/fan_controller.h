@@ -25,19 +25,28 @@ public:
         ESP_LOGI(TAG, "FanController initialized, GPIO %d set to LOW", gpio_num_);
 
         auto& mcp_server = McpServer::GetInstance();
-        mcp_server.AddTool("self.fan.get_state", "Get the power state of the fan", PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
+        mcp_server.AddTool("self.fan.get_state",
+            "Get the power state of the fan.\n"
+            "MUST call when user asks: '风扇开了吗', '风扇状态', 'is fan on'",
+            PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
             ESP_LOGI(TAG, "get_state called, power=%d", power_);
             return power_ ? "{\"power\": true}" : "{\"power\": false}";
         });
 
-        mcp_server.AddTool("self.fan.turn_on", "Turn on the fan", PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
+        mcp_server.AddTool("self.fan.turn_on",
+            "Turn on the fan.\n"
+            "MUST call when user says: '开风扇', '打开风扇', '把风扇打开', 'turn on fan', 'fan on'",
+            PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
             ESP_LOGI(TAG, "turn_on called, setting GPIO %d to HIGH", gpio_num_);
             power_ = true;
             gpio_set_level(gpio_num_, 1);
             return true;
         });
 
-        mcp_server.AddTool("self.fan.turn_off", "Turn off the fan", PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
+        mcp_server.AddTool("self.fan.turn_off",
+            "Turn off the fan.\n"
+            "MUST call when user says: '关风扇', '关闭风扇', '把风扇关掉', 'turn off fan', 'fan off'",
+            PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
             ESP_LOGI(TAG, "turn_off called, setting GPIO %d to LOW", gpio_num_);
             power_ = false;
             gpio_set_level(gpio_num_, 0);

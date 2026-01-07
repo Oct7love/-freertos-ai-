@@ -26,19 +26,28 @@ public:
         ESP_LOGI(TAG, "LampController initialized, GPIO %d set to LOW", gpio_num_);
 
         auto& mcp_server = McpServer::GetInstance();
-        mcp_server.AddTool("self.lamp.get_state", "Get the power state of the lamp", PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
+        mcp_server.AddTool("self.lamp.get_state",
+            "Get the power state of the lamp/light.\n"
+            "MUST call when user asks: '灯开了吗', '灯的状态', 'is light on'",
+            PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
             ESP_LOGI(TAG, "get_state called, power=%d", power_);
             return power_ ? "{\"power\": true}" : "{\"power\": false}";
         });
 
-        mcp_server.AddTool("self.lamp.turn_on", "Turn on the lamp", PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
+        mcp_server.AddTool("self.lamp.turn_on",
+            "Turn on the lamp/light.\n"
+            "MUST call when user says: '开灯', '打开灯', '把灯打开', 'turn on light', 'light on'",
+            PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
             ESP_LOGI(TAG, "turn_on called, setting GPIO %d to HIGH", gpio_num_);
             power_ = true;
             gpio_set_level(gpio_num_, 1);
             return true;
         });
 
-        mcp_server.AddTool("self.lamp.turn_off", "Turn off the lamp", PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
+        mcp_server.AddTool("self.lamp.turn_off",
+            "Turn off the lamp/light.\n"
+            "MUST call when user says: '关灯', '关闭灯', '把灯关掉', 'turn off light', 'light off'",
+            PropertyList(), [this](const PropertyList& properties) -> ReturnValue {
             ESP_LOGI(TAG, "turn_off called, setting GPIO %d to LOW", gpio_num_);
             power_ = false;
             gpio_set_level(gpio_num_, 0);
