@@ -7,7 +7,7 @@
 static uint32_t last_flush_time_us = 0;  // 上次刷新耗时(微秒)
 
 /* ========== 显示缓冲区 ========== */
-static uint8_t OLED_Buffer[128 * 8] = {0};  // 1024字节的显示缓冲区
+uint8_t OLED_Buffer[128 * 8] = {0};  // 1024字节的显示缓冲区 (非static，供外部图形库访问)
 
 /* ========== 私有函数声明 ========== */
 static void OLED_I2C_Init(void);

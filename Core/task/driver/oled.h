@@ -4,6 +4,9 @@
 #include "stm32f1xx_hal.h"
 #include <stdint.h>
 
+/* ========== 外部缓冲区声明 ========== */
+extern uint8_t OLED_Buffer[128 * 8];  // 显示缓冲区，供图形库访问
+
 /* ========== 硬件接口配置(根据实际硬件修改) ========== */
 #define OLED_I2C_PORT           GPIOB                           // I2C引脚GPIO端口
 #define OLED_I2C_CLK_ENABLE()   __HAL_RCC_GPIOB_CLK_ENABLE()   // GPIO时钟使能

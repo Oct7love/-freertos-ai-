@@ -46,6 +46,10 @@ add_executable(${CMAKE_PROJECT_NAME}
         Core/task/driver/oled.h
         Core/task/driver/oledfont.c
         Core/task/driver/oledfont.h
+        Core/task/driver/oled_graphics.c
+        Core/task/driver/oled_graphics.h
+        Core/task/driver/oled_icons.c
+        Core/task/driver/oled_icons.h
         Core/task/oled_task.c
         Core/task/oled_task.h
         Core/task/key_task.c
