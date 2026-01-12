@@ -12,17 +12,17 @@ typedef struct {
     uint32_t sensor_value;
 }sentor_msg_t;
 
-static SemaphoreHandle_t g_printf_mutex = NULL;//打印互斥锁
+// static SemaphoreHandle_t g_printf_mutex = NULL;//打印互斥锁
 
-void safe_printf(const char *format, ...) {
-   va_list ap;
-    va_start(ap, format);
-    if (g_printf_mutex) xSemaphoreTake(g_printf_mutex,portMAX_DELAY);
-    vprintf(format,ap);
-    if (g_printf_mutex) xSemaphoreGive(g_printf_mutex);
-        va_end(ap);
-
-}
+// void safe_printf(const char *format, ...) {
+//    va_list ap;
+//     va_start(ap, format);
+//     if (g_printf_mutex) xSemaphoreTake(g_printf_mutex,portMAX_DELAY);
+//     vprintf(format,ap);
+//     if (g_printf_mutex) xSemaphoreGive(g_printf_mutex);
+//         va_end(ap);
+//
+// }
 // //生产者任务
 // static void producer_task(void *arg) {
 //     sentor_msg_t msg;
@@ -56,7 +56,7 @@ void safe_printf(const char *format, ...) {
 
 void scheduler_init(void) {
     /*创建锁*/
-    g_printf_mutex = xSemaphoreCreateMutex();
+    // g_printf_mutex = xSemaphoreCreateMutex();
 
 
     /*创建队列*/

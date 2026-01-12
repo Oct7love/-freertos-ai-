@@ -40,6 +40,7 @@ static uint16_t cached_heart_rate = 0;
 static uint8_t cached_spo2 = 0;
 static uint8_t cached_finger = 0;
 static uint8_t cached_max30102_valid = 0;
+static uint8_t heart_beat_state = 0;  // 心跳动画状态 (0=小, 1=大)
 
 // GPS缓存（用于界面刷新）
 static float cached_lat = 0.0f;
@@ -85,7 +86,7 @@ static void draw_dht11_page(void) {
     // 绘制标题
     OLED_ShowString(1, 3, "DHT11");
 
-    // 绘制状态
+    // 右上角显示运行状态
     if (dht11_is_running()) {
         OLED_ShowString(1, 13, "RUN");
     } else {
@@ -97,25 +98,32 @@ static void draw_dht11_page(void) {
 
     // 温湿度数据
     if (cached_valid) {
-        // 温度值
-        OLED_ShowString(2, 2, "Temp:");
-        OLED_ShowNum(2, 7, cached_temp, 2);
-        OLED_ShowString(2, 9, "'C");
+        // 温度值 + 进度条 (行2)
+        OLED_ShowString(2, 1, "T:");
+        OLED_ShowNum(2, 3, cached_temp, 2);
+        OLED_ShowString(2, 5, "C");
+        uint8_t temp_percent = (cached_temp > 50) ? 100 : cached_temp * 2;
+        OLED_DrawRoundedProgressBar(50, 20, 70, 6, temp_percent, 100);
 
-        // 温度进度条 (0-50°C) - 使用圆角进度条
-        uint8_t temp_percent = (cached_temp > 50) ? 50 : cached_temp;
-        OLED_DrawRoundedProgressBar(8, 28, 112, 8, temp_percent, 50);
-
-        // 湿度值
-        OLED_ShowString(3, 2, "Humi:");
-        OLED_ShowNum(3, 7, cached_humi, 2);
-        OLED_ShowString(3, 9, " %");
-
-        // 湿度进度条 (0-100%) - 使用圆角进度条
-        OLED_DrawRoundedProgressBar(8, 44, 112, 8, cached_humi, 100);
+        // 湿度值 + 进度条 (行4)
+        OLED_ShowString(4, 1, "H:");
+        OLED_ShowNum(4, 3, cached_humi, 2);
+        OLED_ShowString(4, 5, "%");
+        OLED_DrawRoundedProgressBar(50, 52, 70, 6, cached_humi, 100);
     } else {
-        OLED_ShowString(2, 2, "Temp: -- 'C");
-        OLED_ShowString(3, 2, "Humi: -- %");
+        OLED_ShowString(2, 1, "T: -- C");
+        OLED_ShowString(4, 1, "H: -- %");
+    }
+
+    // 行3显示采集状态
+    if (dht11_is_running()) {
+        if (cached_valid) {
+            OLED_ShowString(3, 1, "Sampling OK");
+        } else {
+            OLED_ShowString(3, 1, "Waiting...");
+        }
+    } else {
+        OLED_ShowString(3, 1, "Stopped");
     }
 }
 
@@ -144,31 +152,29 @@ static void draw_mq2_page(void) {
 
     // PPM数据和报警等级
     if (cached_mq2_valid) {
-        // PPM数值
-        OLED_ShowString(2, 2, "PPM:");
-        OLED_ShowFloat(2, 6, cached_ppm, 4, 1);
+        // 行2: PPM数值
+        OLED_ShowString(2, 1, "PPM:");
+        OLED_ShowFloat(2, 5, cached_ppm, 4, 1);
 
-        // PPM进度条 (0-5000ppm) - 圆角进度条
-        uint16_t ppm_value = (cached_ppm > 5000) ? 5000 : (uint16_t)cached_ppm;
-        OLED_DrawRoundedProgressBar(8, 28, 112, 8, ppm_value / 50, 100);
-
-        // 报警等级（更醒目的显示）
-        OLED_ShowString(3, 2, "Alarm:Lv");
-        OLED_ShowNum(3, 10, cached_alarm, 1);
-
-        // 根据报警等级显示不同提示
+        // 行3: 报警等级 + 状态 (同一行显示)
+        OLED_ShowString(3, 1, "Lv");
+        OLED_ShowNum(3, 3, cached_alarm, 1);
         if (cached_alarm == 0) {
-            OLED_ShowString(4, 2, "  [Safe]");
+            OLED_ShowString(3, 5, "SAFE");
         } else if (cached_alarm == 1) {
-            OLED_ShowString(4, 2, "  [Low]");
+            OLED_ShowString(3, 5, "LOW");
         } else if (cached_alarm == 2) {
-            OLED_ShowString(4, 2, "  [Med]");
+            OLED_ShowString(3, 5, "MED!");
         } else {
-            OLED_ShowString(4, 2, "  [High!]");
+            OLED_ShowString(3, 5, "HIGH!");
         }
+
+        // 行4: 进度条 (Y=48, 高度6, 与PPM分开)
+        uint16_t ppm_value = (cached_ppm > 5000) ? 5000 : (uint16_t)cached_ppm;
+        OLED_DrawRoundedProgressBar(8, 52, 112, 6, ppm_value / 50, 100);
     } else {
-        OLED_ShowString(2, 2, "PPM: ----.-");
-        OLED_ShowString(3, 2, "Alarm: --");
+        OLED_ShowString(2, 1, "PPM: ----.-");
+        OLED_ShowString(3, 1, "Lv: --");
     }
 }
 
@@ -197,22 +203,32 @@ static void draw_mpu6050_page(void) {
 
     // 姿态数据
     if (cached_mpu_valid) {
-        // Pitch和Roll
-        OLED_ShowString(2, 2, "P:");
-        OLED_ShowSignedNum(2, 4, (int32_t)cached_pitch, 3);
-        OLED_ShowString(2, 8, " R:");
-        OLED_ShowSignedNum(2, 11, (int32_t)cached_roll, 3);
+        // 第2行：P和R中间空一格
+        // P:-99  R:-99
+        OLED_ShowString(2, 1, "P:");
+        OLED_ShowSignedNum(2, 3, (int32_t)cached_pitch, 3);
+        OLED_ShowString(2, 8, "R:");
+        OLED_ShowSignedNum(2, 10, (int32_t)cached_roll, 3);
 
-        // 步数
-        OLED_ShowString(3, 2, "Step:");
-        OLED_ShowNum(3, 7, cached_steps, 5);
+        // 第3行：Y和S中间空一格
+        // Y:-180  S:00000
+        OLED_ShowString(3, 1, "Y:");
+        OLED_ShowSignedNum(3, 3, (int32_t)cached_yaw, 4);
+        OLED_ShowString(3, 9, "S:");
+        OLED_ShowNum(3, 11, cached_steps, 5);
 
-        // 步数进度条 (每10000步为满格) - 圆角进度条
-        uint16_t step_percent = (cached_steps > 10000) ? 100 : (cached_steps / 100);
-        OLED_DrawRoundedProgressBar(8, 44, 112, 8, step_percent, 100);
+        // 第4行：Fall和Coll中间空一格
+        // Fall:N  Coll:N
+        uint8_t fall = mpu6050_is_fall_detected();
+        uint8_t coll = mpu6050_is_collision_detected();
+        OLED_ShowString(4, 1, "Fall:");
+        OLED_ShowString(4, 6, fall ? "Y" : "N");
+        OLED_ShowString(4, 9, "Coll:");
+        OLED_ShowString(4, 14, coll ? "Y" : "N");
     } else {
-        OLED_ShowString(2, 2, "P:--- R:---");
-        OLED_ShowString(3, 2, "Step:-----");
+        OLED_ShowString(2, 1, "P:---  R:---");
+        OLED_ShowString(3, 1, "Y:----  S:-----");
+        OLED_ShowString(4, 1, "Fall:-  Coll:-");
     }
 }
 
@@ -242,24 +258,41 @@ static void draw_max30102_page(void) {
     // 心率血氧数据
     if (cached_max30102_valid && cached_finger) {
         // 心率
-        OLED_ShowString(2, 2, "HR :");
-        OLED_ShowNum(2, 7, cached_heart_rate, 3);
-        OLED_ShowString(2, 10, "BPM");
+        OLED_ShowString(2, 1, "HR :");
+        OLED_ShowNum(2, 5, cached_heart_rate, 3);
+        OLED_ShowString(2, 8, "BPM");
 
         // 血氧
-        OLED_ShowString(3, 2, "SpO2:");
-        OLED_ShowNum(3, 7, cached_spo2, 3);
-        OLED_ShowString(3, 10, " %");
+        OLED_ShowString(3, 1, "SpO2:");
+        OLED_ShowNum(3, 6, cached_spo2, 3);
+        OLED_ShowString(3, 9, "%");
 
-        // 血氧进度条 (90-100%映射到0-100%) - 圆角进度条
+        // 血氧进度条 (90-100%映射到0-100%)
         uint8_t spo2_percent = (cached_spo2 < 90) ? 0 : ((cached_spo2 - 90) * 10);
-        OLED_DrawRoundedProgressBar(8, 44, 112, 8, spo2_percent, 100);
+        OLED_DrawRoundedProgressBar(8, 52, 90, 6, spo2_percent, 100);
+
+        // 右下角跳动爱心
+        heart_beat_state = !heart_beat_state;  // 切换状态
+        if (heart_beat_state) {
+            // 大爱心
+            OLED_DrawIcon8x8(115, 51, icon_heart_big);
+        } else {
+            // 小爱心 (偏移一点使其居中)
+            for (uint8_t col = 0; col < 6; col++) {
+                uint8_t column_data = icon_heart_small[col];
+                for (uint8_t bit = 0; bit < 6; bit++) {
+                    if (column_data & (1 << bit)) {
+                        OLED_DrawPixel(116 + col, 53 + bit, 1);
+                    }
+                }
+            }
+        }
     } else if (!cached_finger) {
-        OLED_ShowString(2, 2, " No Finger!");
-        OLED_ShowString(3, 2, "Place finger");
+        OLED_ShowString(2, 1, " No Finger!");
+        OLED_ShowString(3, 1, "Place finger");
     } else {
-        OLED_ShowString(2, 2, "HR :--- BPM");
-        OLED_ShowString(3, 2, "SpO2:--- %");
+        OLED_ShowString(2, 1, "HR :--- BPM");
+        OLED_ShowString(3, 1, "SpO2:--- %");
     }
 }
 
@@ -276,36 +309,47 @@ static void draw_gps_page(void) {
     // 绘制标题
     OLED_ShowString(1, 3, "GPS");
 
-    // 绘制状态
-    if (cached_gps_fixed) {
-        OLED_ShowString(1, 11, "FIXED");
+    // 右上角显示运行状态
+    if (gps_is_running()) {
+        OLED_ShowString(1, 13, "RUN");
     } else {
-        OLED_ShowString(1, 11, "SRCH");
+        OLED_ShowString(1, 12, "STOP");
     }
 
     // 绘制分隔线
     OLED_DrawHLine(0, 16, 127);
 
+    // GPS未运行时显示提示
+    if (!gps_is_running()) {
+        OLED_ShowString(2, 1, "GPS Stopped");
+        OLED_ShowString(3, 1, "KEY1 to start");
+        return;
+    }
+
     // GPS数据
     if (cached_gps_fixed) {
+        // 定位成功
+        OLED_ShowString(2, 1, "FIXED Sat:");
+        OLED_ShowNum(2, 11, cached_satellites, 2);
+
         // 纬度
-        OLED_ShowString(2, 2, "Lat:");
-        OLED_ShowFloat(2, 6, cached_lat, 2, 4);
+        OLED_ShowString(3, 1, "La:");
+        OLED_ShowFloat(3, 4, cached_lat, 2, 4);
 
         // 经度
-        OLED_ShowString(3, 2, "Lon:");
-        OLED_ShowFloat(3, 6, cached_lon, 3, 4);
+        OLED_ShowString(4, 1, "Lo:");
+        OLED_ShowFloat(4, 4, cached_lon, 3, 4);
     } else {
         // 搜索中
-        OLED_ShowString(2, 2, "Searching...");
+        OLED_ShowString(2, 1, "Searching...");
 
-        // 卫星数和信号强度条
-        OLED_ShowString(3, 2, "Sat:");
-        OLED_ShowNum(3, 6, cached_satellites, 2);
+        // 卫星数
+        OLED_ShowString(3, 1, "Satellites:");
+        OLED_ShowNum(3, 12, cached_satellites, 2);
 
-        // 信号强度条 (0-32颗卫星) - 圆角进度条
+        // 信号强度条
         uint8_t sat_value = (cached_satellites > 32) ? 32 : cached_satellites;
-        OLED_DrawRoundedProgressBar(8, 44, 112, 8, sat_value * 3, 100);
+        OLED_DrawRoundedProgressBar(8, 52, 112, 6, sat_value * 3, 100);
     }
 }
 

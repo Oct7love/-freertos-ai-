@@ -234,10 +234,17 @@ static void gps_task(void *arg) {
 
 // ==================== UART 接收回调 ====================
 void gps_uart_rx_callback(uint8_t *data, uint16_t len) {
-    // 将数据写入环形缓冲区
+    // 将数据写入环形缓冲区（带溢出保护）
     for (uint16_t i = 0; i < len; i++) {
+        uint16_t next_pos = (rx_write_pos + 1) % GPS_RX_BUFFER_SIZE;
+        
+        // 缓冲区满时丢弃新数据，避免覆盖未读数据
+        if (next_pos == rx_read_pos) {
+            break;
+        }
+        
         gps_rx_buffer[rx_write_pos] = data[i];
-        rx_write_pos = (rx_write_pos + 1) % GPS_RX_BUFFER_SIZE;
+        rx_write_pos = next_pos;
     }
 }
 

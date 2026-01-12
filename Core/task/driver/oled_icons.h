@@ -9,6 +9,8 @@ extern const uint8_t icon_temp[8];    // 温度计图标 (DHT11)
 extern const uint8_t icon_gas[8];     // 气体分子图标 (MQ2)
 extern const uint8_t icon_gyro[8];    // 陀螺仪图标 (MPU6050)
 extern const uint8_t icon_heart[8];   // 心跳图标 (MAX30102)
+extern const uint8_t icon_heart_small[6]; // 小爱心 (心率跳动)
+extern const uint8_t icon_heart_big[8];   // 大爱心 (心率跳动)
 extern const uint8_t icon_gps[8];     // GPS卫星图标 (GPS)
 
 // 图标绘制函数

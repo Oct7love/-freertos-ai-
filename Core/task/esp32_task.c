@@ -192,9 +192,17 @@ static void esp32_task(void *arg) {
 
 // ==================== UART 回调 ====================
 void esp32_uart_rx_callback(uint8_t *data, uint16_t len) {
+    // 带溢出保护的环形缓冲区写入
     for (uint16_t i = 0; i < len; i++) {
+        uint16_t next_pos = (rx_write_pos + 1) % ESP32_RX_BUFFER_SIZE;
+        
+        // 缓冲区满时丢弃新数据，避免覆盖未读数据
+        if (next_pos == rx_read_pos) {
+            break;
+        }
+        
         esp32_rx_buffer[rx_write_pos] = data[i];
-        rx_write_pos = (rx_write_pos + 1) % ESP32_RX_BUFFER_SIZE;
+        rx_write_pos = next_pos;
     }
 }
 
